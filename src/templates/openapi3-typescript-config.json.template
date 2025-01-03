@@ -1,0 +1,9 @@
+{
+  "input": "",
+  "output": "openapi3-typescript",
+  "reactQuery": {
+    "enable": true,
+    "pageParam": "pageParam"
+  },
+  "getControllerNameFromRoute": "(route) => route.split('/')[0]"
+}

@@ -36,23 +36,42 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fetch_swagger_data_helpers_1 = require("../helpers/fetch-swagger-data.helpers");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const generateQueriesFile = ({ controllerName, routesInfo, controllerDir, getControllerFuncFromSettings, }) => {
+const generateQueriesFile = ({ controllerName, routesInfo, controllerDir, getControllerFuncFromSettings, reactQueryPageParam, reactQueryGetNextPageParam, }) => {
     const folderName = (0, fetch_swagger_data_helpers_1.convertToKebabCase)(controllerName);
     const filePath = path.join(controllerDir, `${(0, fetch_swagger_data_helpers_1.convertToKebabCase)(controllerName)}.queries.ts`);
-    let content = `
-import { useQuery, QueryOptions } from "@tanstack/react-query";\n
+    const importInfiniteQuery = routesInfo.some((r) => {
+        const [route, info] = Object.entries(r)[0];
+        return info.hasPageParamInBody || info.hasPageParamInQuery;
+    });
+    let content = "";
+    if (importInfiniteQuery) {
+        content = `import {
+  useQuery,
+  UseQueryOptions,
+  useInfiniteQuery,
+  UseInfiniteQueryOptions
+} from "@tanstack/react-query";\n`;
+    }
+    else {
+        content = `import { useQuery, UseQueryOptions } from "@tanstack/react-query";\n`;
+    }
+    content += `
 import ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}Api from "./${(0, fetch_swagger_data_helpers_1.convertToKebabCase)(controllerName)}.api";\n`;
     const interfacesToImport = [];
+    const queriesToExport = [];
     routesInfo.forEach((routeInfo) => {
         const [route, info] = Object.entries(routeInfo)[0];
         const apiName = (0, fetch_swagger_data_helpers_1.getApiNameFromRoute)(route, true, getControllerFuncFromSettings);
         if (info.hasQueryParams || info.hasBodyPayload || info.hasPathParams) {
             interfacesToImport.push(`I${apiName}Request`);
         }
+        if (info.hasResponse) {
+            interfacesToImport.push(`I${apiName}Response`);
+        }
     });
     interfacesToImport.sort((a, b) => a.length - b.length);
     if (interfacesToImport.length) {
-        content += `import {\n  ${interfacesToImport.join(",\n  ")}\n} from "./${folderName}.interface";\n`;
+        content += `import {\n\t${interfacesToImport.join(",\n\t")}\n} from "./${folderName}.interface";\n`;
     }
     content +=
         "\n// ----------------------------------------------------------------------\n\n";
@@ -67,8 +86,14 @@ import ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}Api from 
             : ""}) => ["use${apiNameWithController}Query"${info.hasPathParams || info.hasQueryParams || info.hasBodyPayload
             ? ", payload"
             : ""}],`;
+        if (info.hasPageParamInBody || info.hasPageParamInQuery) {
+            content += `
+  use${apiName}InfiniteQuery : (payload: I${apiNameWithController}Request) => ["use${apiNameWithController}Query", payload],`;
+        }
     });
-    content += "\n};\n\n";
+    content += "\n};\n";
+    content +=
+        "\n// ----------------------------------------------------------------------\n\n";
     routesInfo.forEach((routeInfo) => {
         const [route, info] = Object.entries(routeInfo)[0];
         const apiName = (0, fetch_swagger_data_helpers_1.getApiNameFromRoute)(route, false, getControllerFuncFromSettings);
@@ -76,7 +101,16 @@ import ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}Api from 
         content += `const use${apiName}Query = (
   ${info.hasPathParams || info.hasQueryParams || info.hasBodyPayload
             ? `payload: I${apiNameWithController}Request,\n`
-            : ""}  options?: QueryOptions
+            : ""}  options?: Partial<
+    UseQueryOptions<
+      ${info.hasResponse ? `I${apiNameWithController}Response` : "any"},
+      Error,
+      ${info.hasResponse ? `I${apiNameWithController}Response` : "any"},
+      ${info.hasPathParams || info.hasQueryParams || info.hasBodyPayload
+            ? `(string | I${apiNameWithController}Request)[]`
+            : `string[]`}
+    >
+  >
 ) => 
   useQuery({
     queryKey: ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}QueryKeys.use${apiName}Query(${info.hasPathParams || info.hasQueryParams || info.hasBodyPayload
@@ -87,11 +121,43 @@ import ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}Api from 
             : ""}),
     ...options,
   });\n\n`;
+        if (info.hasPageParamInBody || info.hasPageParamInQuery) {
+            queriesToExport.push(`use${apiName}InfiniteQuery`);
+            content += `const use${apiName}InfiniteQuery = (
+  ${`payload: I${apiNameWithController}Request,\n`}  options?: UseInfiniteQueryOptions<
+    ${info.hasResponse ? `I${apiNameWithController}Response` : "any"},
+    unknown,
+    ${info.hasResponse ? `I${apiNameWithController}Response` : "any"},
+    ${info.hasResponse ? `I${apiNameWithController}Response` : "any"},
+    (string | I${apiNameWithController}Request)[],
+    number
+  >
+) => 
+  useInfiniteQuery({
+    queryKey: ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}QueryKeys.use${apiName}InfiniteQuery(payload),
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0 }) => ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}Api.${(0, fetch_swagger_data_helpers_1.toCamelCase)(apiName)}({
+      ...payload,
+      ${info.hasPageParamInQuery
+                ? `queryParams: {
+        ...payload.queryParams,
+        ${reactQueryPageParam}: pageParam,
+      },`
+                : ""}${info.hasPageParamInBody
+                ? `bodyPayload: {
+        ...payload.bodyPayload,
+        ${reactQueryPageParam}: pageParam,
+      },`
+                : ""}
+    }),
+    getNextPageParam: ${reactQueryGetNextPageParam},
+    ...options,
+  });\n\n`;
+        }
     });
     content +=
         "// ----------------------------------------------------------------------\n\n";
     content += `const ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}Queries = {\n`;
-    const queriesToExport = [];
     routesInfo.forEach((routeInfo) => {
         const route = Object.keys(routeInfo)[0];
         const apiName = (0, fetch_swagger_data_helpers_1.getApiNameFromRoute)(route, false, getControllerFuncFromSettings);
@@ -99,7 +165,7 @@ import ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}Api from 
     });
     queriesToExport.sort((a, b) => a.length - b.length);
     if (queriesToExport.length) {
-        content += `  ${queriesToExport.join(",\n  ")}\n}\n\n`;
+        content += `\t${queriesToExport.join(",\n\t")}\n}\n\n`;
     }
     content +=
         "// ----------------------------------------------------------------------\n\n";

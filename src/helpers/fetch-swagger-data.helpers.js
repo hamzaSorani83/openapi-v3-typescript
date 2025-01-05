@@ -89,7 +89,7 @@ exports.handleParameterInPathForApi = handleParameterInPathForApi;
 const handleParameterInQueryAndBodyForApi = (hasQueryParams, hasBodyPayload, methodType) => {
     if (methodType === "post" || methodType === "put" || methodType === "patch") {
         if (hasQueryParams && hasBodyPayload) {
-            return `payload.bodyPayload,\n    {
+            return `payload.bodyPayload,\n\t\t{
       ...axiosConfig,
       params: {
         ...payload.queryParams,
@@ -98,7 +98,7 @@ const handleParameterInQueryAndBodyForApi = (hasQueryParams, hasBodyPayload, met
     }`;
         }
         if (hasQueryParams) {
-            return `null,\n    {
+            return `null,\n\t\t{
       ...axiosConfig,
       params: {
         ...payload.queryParams,

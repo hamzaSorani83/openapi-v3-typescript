@@ -3,7 +3,8 @@
   "output": "openapi3-typescript",
   "reactQuery": {
     "enable": true,
-    "pageParam": "pageParam"
+    "pageParam": "pageParam",
+    "getNextPageParam": "(lastPage, allPages) => {\n\t\t\tif (!lastPage?.hasNextPage) return undefined;\n\t\t\treturn allPages.length;\n\t}"
   },
   "getControllerNameFromRoute": "(route) => route.split('/')[0]"
 }

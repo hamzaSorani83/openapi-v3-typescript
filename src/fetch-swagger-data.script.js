@@ -43,7 +43,15 @@ const interfaces_file_generator_1 = __importDefault(require("./generators/interf
 const fetch_swagger_data_helpers_1 = require("./helpers/fetch-swagger-data.helpers");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const [inputSource, outputLocation, withQueries, reactQueryPageParam, getControllerFuncFromSettings,] = process.argv.slice(2);
+const configPath = "openapi3-typescript-config.json";
+const { input: inputSource, output: outputLocation = "openapi3-typescript", reactQuery = {
+    enable: true,
+    pageParam: "pageParam",
+    getNextPageParam: `(lastPage, allPages) => {\n\t\t\tif (!lastPage?.hasNextPage) return undefined;\n\t\t\treturn allPages.length;\n\t}`,
+}, getControllerNameFromRoute: getControllerFuncFromSettings = `(route) => route.split('/')[0]`, } = (0, fetch_swagger_data_helpers_1.readConfig)(configPath);
+const withQueries = reactQuery.enable;
+const reactQueryPageParam = reactQuery.pageParam;
+const reactQueryGetNextPageParam = reactQuery?.getNextPageParam;
 // ----------------------------------------------------------------------
 async function fetchSwaggerJson() {
     if (inputSource.startsWith("http://") || inputSource.startsWith("https://")) {
@@ -103,8 +111,10 @@ function generateController({ controllerName, routesInfo, }) {
             (0, queries_file_generator_1.default)({
                 controllerName,
                 controllerDir,
-                routesInfo: routesInfo.filter((r) => Object.values(r)[0].methodType === "get"),
+                routesInfo: getApis,
                 getControllerFuncFromSettings,
+                reactQueryGetNextPageParam,
+                reactQueryPageParam,
             });
         }
     }
@@ -116,27 +126,39 @@ async function main() {
         const controllersRoutes = {};
         Object.entries(paths).forEach(([route, methods]) => {
             const controllerName = (0, fetch_swagger_data_helpers_1.getControllerNameFromRoute)(route, getControllerFuncFromSettings); // Use the first segment as controller name
-            const [methodType, data] = Object.entries(methods)[0];
-            let hasBodyPayload = false;
-            let hasResponse = false;
-            if (data.requestBody?.content) {
-                hasBodyPayload = !!Object.values(data.requestBody.content)[0]?.schema;
-            }
-            if (data.responses[200].content) {
-                hasResponse = !!Object.values(data.responses[200].content)[0]?.schema;
-            }
-            const routeInfo = {
-                hasBodyPayload,
-                hasResponse,
-                hasPathParams: !!data.parameters?.some((p) => p.in === "path"),
-                hasQueryParams: !!data.parameters?.some((p) => p.in === "query"),
-                methodType: methodType,
-            };
-            if (controllersRoutes[controllerName]) {
-                controllersRoutes[controllerName].push({ [route]: routeInfo });
-            }
-            else {
-                controllersRoutes[controllerName] = [{ [route]: routeInfo }];
+            if (controllerName !== null) {
+                const [methodType, data] = Object.entries(methods)[0];
+                let hasBodyPayload = false;
+                let hasResponse = false;
+                let hasPageParamInQuery = !!data.parameters?.some((p) => p.in === "query" && p.name === reactQueryPageParam);
+                let hasPageParamInBody = false;
+                if (data.requestBody?.content) {
+                    hasBodyPayload = !!Object.values(data.requestBody.content)[0]?.schema;
+                    const requestProperty = Object.values(data.requestBody.content)[0]
+                        ?.schema;
+                    hasPageParamInBody =
+                        (0, fetch_swagger_data_helpers_1.isObjectProperty)(requestProperty) &&
+                            !!requestProperty.properties &&
+                            Object.keys(requestProperty.properties).some((k) => k === reactQueryPageParam);
+                }
+                if (data.responses[200].content) {
+                    hasResponse = !!Object.values(data.responses[200].content)[0]?.schema;
+                }
+                const routeInfo = {
+                    hasBodyPayload,
+                    hasResponse,
+                    hasPathParams: !!data.parameters?.some((p) => p.in === "path"),
+                    hasQueryParams: !!data.parameters?.some((p) => p.in === "query"),
+                    hasPageParamInBody,
+                    hasPageParamInQuery,
+                    methodType: methodType,
+                };
+                if (controllersRoutes[controllerName]) {
+                    controllersRoutes[controllerName].push({ [route]: routeInfo });
+                }
+                else {
+                    controllersRoutes[controllerName] = [{ [route]: routeInfo }];
+                }
             }
         });
         Object.entries(controllersRoutes).forEach(([controllerName, routesInfo]) => {

@@ -5,14 +5,14 @@ const fs = require("fs");
 const path = require("path");
 const generateRouteFile = ({ controllerDir, controllerName, routes, getControllerFuncFromSettings, }) => {
     const filePath = path.join(controllerDir, `${(0, fetch_swagger_data_helpers_1.convertToKebabCase)(controllerName)}.api-routes.ts`);
-    let content = `const ${controllerName}ApiRoutes = {\n`;
+    let content = `const ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}ApiRoutes = {\n`;
     routes.forEach((route) => {
         const apiName = (0, fetch_swagger_data_helpers_1.getApiNameFromRoute)(route, false, getControllerFuncFromSettings);
-        content += `  ${apiName}: ${(0, fetch_swagger_data_helpers_1.handleParameterInPath)(route)},\n`;
+        content += `\t${apiName}: ${(0, fetch_swagger_data_helpers_1.handleParameterInPath)(route)},\n`;
     });
     content += `};\n`;
     content += `
-export default ${controllerName}ApiRoutes;`;
+export default ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}ApiRoutes;`;
     fs.writeFileSync(filePath, content);
 };
 exports.default = generateRouteFile;

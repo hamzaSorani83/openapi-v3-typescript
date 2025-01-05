@@ -9,7 +9,7 @@ const generateApiFile = ({ controllerName, controllerDir, routesInfo, getControl
     let content = `import ApiInstance from "@api-instance";
 import { AxiosRequestConfig } from "axios";
 
-import ${controllerName}ApiRoutes from "./${folderName}.api-routes";\n`;
+import ${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}ApiRoutes from "./${folderName}.api-routes";\n`;
     const interfacesToImport = [];
     routesInfo.forEach((routeInfo) => {
         const [route, info] = Object.entries(routeInfo)[0];
@@ -23,7 +23,7 @@ import ${controllerName}ApiRoutes from "./${folderName}.api-routes";\n`;
     });
     interfacesToImport.sort((a, b) => a.length - b.length);
     if (interfacesToImport.length) {
-        content += `import {\n  ${interfacesToImport.join(",\n  ")}\n} from "./${folderName}.interface";\n\n`;
+        content += `import {\n\t${interfacesToImport.join(",\n\t")}\n} from "./${folderName}.interface";\n\n`;
         content +=
             "// ----------------------------------------------------------------------\n\n";
     }
@@ -34,7 +34,7 @@ import ${controllerName}ApiRoutes from "./${folderName}.api-routes";\n`;
         content += `const ${(0, fetch_swagger_data_helpers_1.toCamelCase)(apiName)} = async (${info.hasPathParams || info.hasQueryParams || info.hasBodyPayload
             ? `payload: I${apiNameWithController}Request, axiosConfig?: AxiosRequestConfig`
             : "axiosConfig?: AxiosRequestConfig"}) => {
-  const { data } = await ApiInstance.${info.methodType}${(0, fetch_swagger_data_helpers_1.handleResponseInApi)(info.hasResponse, apiNameWithController)}(\n    ${(0, fetch_swagger_data_helpers_1.handleParameterInPathForApi)(`${controllerName}ApiRoutes.${apiName}`, info.hasPathParams)},\n    ${(0, fetch_swagger_data_helpers_1.handleParameterInQueryAndBodyForApi)(info.hasQueryParams, info.hasBodyPayload, info.methodType)}\n  );
+  const { data } = await ApiInstance.${info.methodType}${(0, fetch_swagger_data_helpers_1.handleResponseInApi)(info.hasResponse, apiNameWithController)}(\n\t\t${(0, fetch_swagger_data_helpers_1.handleParameterInPathForApi)(`${(0, fetch_swagger_data_helpers_1.toCamelCase)(controllerName)}ApiRoutes.${apiName}`, info.hasPathParams)},\n\t\t${(0, fetch_swagger_data_helpers_1.handleParameterInQueryAndBodyForApi)(info.hasQueryParams, info.hasBodyPayload, info.methodType)}\n\t);
   return data;
 };\n\n`;
     });
@@ -49,7 +49,7 @@ import ${controllerName}ApiRoutes from "./${folderName}.api-routes";\n`;
     });
     apisToExport.sort((a, b) => a.length - b.length);
     if (apisToExport.length) {
-        content += `  ${apisToExport.join(",\n  ")}\n}\n\n`;
+        content += `\t${apisToExport.join(",\n\t")}\n}\n\n`;
     }
     content +=
         "// ----------------------------------------------------------------------\n\n";

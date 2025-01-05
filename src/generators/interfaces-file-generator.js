@@ -112,14 +112,14 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
     };
     // ----------------------------------------------------------------------
     const getObject = (properties, isPropertyOfArray, additionalProperties) => {
-        let content = `  {\n`;
+        let content = `\t{\n`;
         if (properties) {
             Object.entries(properties).forEach(([propertyName, p]) => {
-                content += `  "${propertyName}": ${getProperty(p, false, false)}`;
+                content += `\t"${propertyName}": ${getProperty(p, false, false)}`;
             });
         }
         if (additionalProperties) {
-            content += `  [key: string]: ${getProperty(additionalProperties, isPropertyOfArray, false)}`;
+            content += `\t[key: string]: ${getProperty(additionalProperties, isPropertyOfArray, false)}`;
         }
         content += `}`;
         return content;
@@ -165,18 +165,18 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
     };
     // ----------------------------------------------------------------------
     const getQueryParams = (parameters) => {
-        let content = `  queryParams: {\n`;
+        let content = `\tqueryParams: {\n`;
         parameters.forEach((parameter) => {
             if (parameter.schema) {
-                content += `    "${parameter.name}": ${getProperty(parameter.schema, false, true)}`;
+                content += `\t\t"${parameter.name}": ${getProperty(parameter.schema, false, true)}`;
             }
         });
-        content += `  }\n`;
+        content += `\t}\n`;
         return content;
     };
     // ----------------------------------------------------------------------
     const getPathParams = (parameters) => {
-        let content = `  pathParams: [`;
+        let content = `\tpathParams: [`;
         parameters.forEach((parameter, i) => {
             if (parameter.schema) {
                 content += `"${parameter.name}": ${getProperty(parameter.schema, true, true)}${i !== parameters.length - 1 ? "," : ""}`;
@@ -190,7 +190,7 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
         if (!requestBody.content) {
             return "''";
         }
-        let content = `  bodyPayload: `;
+        let content = `\tbodyPayload: `;
         const [, data] = Object.entries(requestBody.content)[0];
         if (!data.schema) {
             return "''";
@@ -213,35 +213,37 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
     Object.entries(paths).forEach(([route, obj]) => {
         const apiName = (0, fetch_swagger_data_helpers_1.getApiNameFromRoute)(route, true, getControllerFuncFromSettings);
         controllerName = (0, fetch_swagger_data_helpers_1.getControllerNameFromRoute)(route, getControllerFuncFromSettings);
-        if (!interfaces[controllerName]) {
-            interfaces[controllerName] = [];
-        }
-        const [, data] = Object.entries(obj)[0];
-        const queryParameters = data.parameters?.filter((p) => p.in === "query");
-        const pathParameters = data.parameters?.filter((p) => p.in === "path");
-        if (pathParameters?.length ||
-            queryParameters?.length ||
-            data.requestBody?.content) {
-            const requestInterfaceName = `I${apiName}Request`;
-            let content = `export type ${requestInterfaceName} = {\n`;
-            if (queryParameters?.length) {
-                content += getQueryParams(queryParameters);
+        if (controllerName !== null) {
+            if (!interfaces[controllerName]) {
+                interfaces[controllerName] = [];
             }
-            if (pathParameters?.length) {
-                content += getPathParams(pathParameters);
+            const [, data] = Object.entries(obj)[0];
+            const queryParameters = data.parameters?.filter((p) => p.in === "query");
+            const pathParameters = data.parameters?.filter((p) => p.in === "path");
+            if (pathParameters?.length ||
+                queryParameters?.length ||
+                data.requestBody?.content) {
+                const requestInterfaceName = `I${apiName}Request`;
+                let content = `export type ${requestInterfaceName} = {\n`;
+                if (queryParameters?.length) {
+                    content += getQueryParams(queryParameters);
+                }
+                if (pathParameters?.length) {
+                    content += getPathParams(pathParameters);
+                }
+                if (data.requestBody?.content) {
+                    content += getBodyPayload(data.requestBody);
+                }
+                content += "}\n";
+                interfaces[controllerName].push(content);
             }
-            if (data.requestBody?.content) {
-                content += getBodyPayload(data.requestBody);
+            if (data.responses["200"].content) {
+                const responseInterfaceName = `I${apiName}Response`;
+                let content = `export type ${responseInterfaceName} = `;
+                const responsePayload = getResponsePayload(data.responses);
+                content += responsePayload;
+                interfaces[controllerName].push(content);
             }
-            content += "}\n";
-            interfaces[controllerName].push(content);
-        }
-        if (data.responses["200"].content) {
-            const responseInterfaceName = `I${apiName}Response`;
-            let content = `export type ${responseInterfaceName} = `;
-            const responsePayload = getResponsePayload(data.responses);
-            content += responsePayload;
-            interfaces[controllerName].push(content);
         }
     });
     // #endregion
@@ -249,6 +251,8 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
     // #region postProcessing
     isPostProcessing = true;
     const printCommonInterfacesFile = () => {
+        if (!Object.entries(dtosInCommon).length)
+            return;
         const fPath = path.join(outputLocation, "common-interfaces.interface.ts");
         let result = "";
         Object.entries(dtosInCommon).forEach(([dto, prop]) => {
@@ -269,7 +273,7 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
             });
             dtosToImports.sort((a, b) => a.length - b.length);
             if (dtosToImports.length) {
-                result = `import {\n  ${dtosToImports.join(",\n  ")}\n} from "../common-interfaces.interface";\n\n// ----------------------------------------------------------------------\n\n${result}`;
+                result = `import {\n\t${dtosToImports.join(",\n\t")}\n} from "../common-interfaces.interface";\n\n// ----------------------------------------------------------------------\n\n${result}`;
             }
             fs.writeFileSync(filePath, result.replaceAll(`;\n;`, ";\n"));
         });

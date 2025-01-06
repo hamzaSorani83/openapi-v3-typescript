@@ -1,11 +1,11 @@
 {
   "name": "openapi-v3-typescript",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "description": "openapi-v3-typescript library provides a streamlined way to generate TypeScript types from OpenAPI V3 specifications. By converting your API definitions into strongly typed interfaces, this library allows developers to leverage TypeScript’s static typing capabilities, ensuring better code quality and reducing runtime errors",
   "main": "index.js",
   "scripts": {
     "openapi-fetch": "node index.js",
-    "postinstall": "cp src/templates/openapi3-typescript-config.json.template openapi3-typescript-config.json"
+    "postinstall": "node src/helpers/copy-config.js"
   },
   "repository": {
     "type": "git",
@@ -35,12 +35,14 @@
   "author": "Hamza Sorani <hamzasorani835@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^22.10.3",
-    "axios": "^1.7.9",
-    "typescript": "^5.7.2"
+    "axios": "^1.7.9"
   },
   "bin": {
     "fetch-swagger-data": "./index.js"
   },
-  "private": false
+  "private": false,
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2"
+  }
 }

@@ -1,4 +1,4 @@
-s# Openapi V3 Typescript
+# Openapi V3 Typescript
 
 The openapi-v3-typescript library provides a streamlined way to generate TypeScript types from OpenAPI V3 specifications. By converting your API definitions into strongly typed interfaces, this library allows developers to leverage TypeScript’s static typing capabilities, ensuring better code quality and reducing runtime errors.
 
@@ -27,7 +27,7 @@ And in your tsconfig.json add alias for axios instance:
 {
   "compilerOptions": {
     "paths": {
-      <span style="color:#22863a; background-color:#f0fff4">+ "@api-instance": ["path-to-your-api-instance"]</span>
+      + "@api-instance": ["path-to-your-api-instance"]
     }
   }
 }
@@ -129,7 +129,7 @@ userApi.signIn(
       password: "******",
     },
   },
- <span style="color:#22863a; background-color:#f0fff4"> + {
+  + {
     + params: {
       + someParameter: "some value",
     + },
@@ -137,7 +137,7 @@ userApi.signIn(
       + "header-parameter": "header parameter value",
     + },
   + }
-  </span>
+  
 );
 </pre>
 
@@ -160,9 +160,9 @@ const useGetAllUserQuery = (
 #### Example Usage:
 
 <pre>
-const {data, isLoading} = useGetAllUserQuery(<span style="color:#22863a; background-color:#f0fff4">+ {
+const {data, isLoading} = useGetAllUserQuery(+ {
   + refetchOnMount: true,
-+ }</span>)
++ })
 </pre>
 
 - ### Query Keys
@@ -178,15 +178,15 @@ export const countryQueryKeys = {
 #### Example Usage:
 
 <pre>
-<span style="color:#22863a; background-color:#f0fff4">+ import { countryQueryKeys } from '/.../country/country.queries.ts'; </span>
++ import { countryQueryKeys } from '/.../country/country.queries.ts'; 
 ...
 const queryClient = useQueryClient();
 ...
 queryClient.invalidateQueries(
-  <span style="color:#22863a; background-color:#f0fff4">+ countryQueryKeys.useGetAllCityQuery({
+  + countryQueryKeys.useGetAllCityQuery({
     + countryId: 3,
   + })
-</span>);
+);
 </pre>
 
 - ### Omit Generation of Specific Controllers
@@ -196,6 +196,6 @@ To exclude the generation of specific controllers, such as those related to the 
 <pre>
 // openapi3-typescript-config.json
 {
-  <span style="color:#22863a; background-color:#f0fff4">+ "getControllerNameFromRoute": "(route) => route.split('/')[2].startsWith('Dashboard') ? null : route.split('/')[2]" </span>
+  + "getControllerNameFromRoute": "(route) => route.split('/')[2].startsWith('Dashboard') ? null : route.split('/')[2]" 
 }
 </pre>

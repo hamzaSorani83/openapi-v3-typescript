@@ -43,12 +43,14 @@ const interfaces_file_generator_1 = __importDefault(require("./generators/interf
 const fetch_swagger_data_helpers_1 = require("./helpers/fetch-swagger-data.helpers");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const configPath = "openapi3-typescript-config.json";
-const { input: inputSource, output: outputLocation = "openapi3-typescript", reactQuery = {
+const configPath = "openapi-v3-typescript-config.json";
+const [controllerNameToGenerate] = process.argv.slice(2);
+const { input: inputSource, output = "openapi-v3-typescript", reactQuery = {
     enable: true,
     pageParam: "pageParam",
     getNextPageParam: `(lastPage, allPages) => {\n\t\t\tif (!lastPage?.hasNextPage) return undefined;\n\t\t\treturn allPages.length;\n\t}`,
-}, getControllerNameFromRoute: getControllerFuncFromSettings = `(route) => route.split('/')[0]`, } = (0, fetch_swagger_data_helpers_1.readConfig)(configPath);
+}, getControllerNameFromRoute: getControllerFuncFromSettings = `(route) => route.split('/')[0]`, includedControllers, excludedControllers, } = (0, fetch_swagger_data_helpers_1.readConfig)(configPath);
+const outputLocation = process.cwd() + "/" + output;
 const withQueries = reactQuery.enable;
 const reactQueryPageParam = reactQuery.pageParam;
 const reactQueryGetNextPageParam = reactQuery?.getNextPageParam;
@@ -126,7 +128,12 @@ async function main() {
         const controllersRoutes = {};
         Object.entries(paths).forEach(([route, methods]) => {
             const controllerName = (0, fetch_swagger_data_helpers_1.getControllerNameFromRoute)(route, getControllerFuncFromSettings); // Use the first segment as controller name
-            if (controllerName !== null) {
+            if ((0, fetch_swagger_data_helpers_1.allowGenerateController)({
+                controllerName,
+                controllerNameToGenerate,
+                excludedControllers,
+                includedControllers,
+            })) {
                 const [methodType, data] = Object.entries(methods)[0];
                 let hasBodyPayload = false;
                 let hasResponse = false;
@@ -167,7 +174,7 @@ async function main() {
                 routesInfo,
             });
         });
-        (0, interfaces_file_generator_1.default)(openApiJson, outputLocation, getControllerFuncFromSettings);
+        (0, interfaces_file_generator_1.default)(openApiJson, outputLocation, getControllerFuncFromSettings, includedControllers, excludedControllers);
     }
     catch (error) {
         console.error("Error fetching or processing Swagger JSON:", error);

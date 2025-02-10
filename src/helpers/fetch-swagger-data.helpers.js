@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeConfig = exports.readConfig = exports.isArrayProperty = exports.isObjectProperty = exports.isRefProperty = exports.isNumberProperty = exports.isPrimitiveProperty = exports.getControllerNameFromRoute = exports.getApiNameFromRoute = exports.handleResponseInApi = exports.handleParameterInQueryAndBodyForApi = exports.handleParameterInPathForApi = exports.handleParameterInPath = exports.dtoNameToInterfaceName = exports.applyAnd = exports.applyOr = exports.nullable = exports.appendNewLine = exports.convertToKebabCase = exports.toCamelCase = exports.getFileDtos = void 0;
+exports.allowGenerateController = exports.writeConfig = exports.readConfig = exports.isArrayProperty = exports.isObjectProperty = exports.isRefProperty = exports.isNumberProperty = exports.isPrimitiveProperty = exports.getControllerNameFromRoute = exports.getApiNameFromRoute = exports.handleResponseInApi = exports.handleParameterInQueryAndBodyForApi = exports.handleParameterInPathForApi = exports.handleParameterInPath = exports.dtoNameToInterfaceName = exports.applyAnd = exports.applyOr = exports.nullable = exports.appendNewLine = exports.convertToKebabCase = exports.toCamelCase = exports.getFileDtos = void 0;
 const fs = __importStar(require("fs"));
 // ----------------------------------------------------------------------
 const getFileDtos = (fileResult) => fileResult
@@ -226,3 +226,13 @@ const writeConfig = (configFile) => {
     }
 };
 exports.writeConfig = writeConfig;
+const allowGenerateController = ({ controllerName, controllerNameToGenerate, includedControllers, excludedControllers, }) => {
+    if (controllerNameToGenerate)
+        return controllerName === controllerNameToGenerate;
+    if (includedControllers?.length)
+        return includedControllers.includes(controllerName);
+    if (excludedControllers?.length)
+        return !excludedControllers.includes(controllerName);
+    return controllerName !== null;
+};
+exports.allowGenerateController = allowGenerateController;

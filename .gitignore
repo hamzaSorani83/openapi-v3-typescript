@@ -3,7 +3,7 @@ node_modules/
 *.ts
 node_modules
 data.json
-openapi3-typescript-config.json
-openapi3-typescript
+openapi-v3-typescript-config.json
+openapi-v3-typescript
 api-instance.js
 api-instance.ts

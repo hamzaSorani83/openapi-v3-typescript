@@ -1,8 +1,15 @@
 const fs = require("fs");
+const path = require("path");
 
-fs.writeFileSync("openapi3-typescript-config.json", "");
+const fullPath = path.dirname(require.main.filename);
+const regexResp = /^(.*?)node_modules/.exec(fullPath);
+const appRoot = regexResp ? regexResp[1] : fullPath;
 
-fs.copyFileSync(
-  "src/templates/openapi3-typescript-config.json.template",
-  "openapi3-typescript-config.json"
-);
+const configFilePath = path.join(appRoot, "openapi-v3-typescript-config.json");
+
+if (!fs.existsSync(configFilePath)) {
+  fs.copyFileSync(
+    "src/templates/openapi-v3-typescript-config.json.template",
+    configFilePath
+  );
+}

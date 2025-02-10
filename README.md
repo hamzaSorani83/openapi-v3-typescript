@@ -23,19 +23,19 @@ npm i -D openapi-v3-typescript
 
 And in your tsconfig.json add alias for axios instance:
 
-<pre>
+```diff
 {
   "compilerOptions": {
     "paths": {
-      + "@api-instance": ["path-to-your-api-instance"]
++      "@api-instance": ["path-to-your-api-instance"]
     }
   }
 }
-</pre>
+```
 
 ## Configuration Options
 
-In the root directory of your project, you will find the openapi3-typescript-config.json file. This file is crucial for configuring the OpenAPI TypeScript generation process. Here’s how to set it up:
+In the root directory of your project, you will find the openapi-v3-typescript-config.json file. This file is crucial for configuring the OpenAPI TypeScript generation process. Here’s how to set it up:
 
 ### 1. Input
 
@@ -45,8 +45,8 @@ In the root directory of your project, you will find the openapi3-typescript-con
 
 ### 2. Output
 
-- Indicate the directory where you would like the output to be saved. Example: `./openapi3-typescript`
-- Default value: `./openapi3-typescript`
+- Indicate the directory where you would like the output to be saved. Example: `./openapi-v3-typescript`
+- Default value: `./openapi-v3-typescript`
 
 ### 3. getControllerNameFromRoute
 
@@ -77,11 +77,21 @@ Configuration for enabling [@tanstack/react-query](https://tanstack.com/query/la
 
 ## Usage
 
-To generate types from your OpenAPI specification, run:
+- To generate types from your OpenAPI specification, run:
 
 ```bash
-npm run openapi-fetch
+npx openapi-v3-typescript fetch
 ```
+
+- To generate types for a specific controller, use the following command:
+
+```bash
+npx openapi-v3-typescript fetch <controllerName>
+```
+
+▎Note
+
+second command will not create the `common.interface.ts` file.
 
 ## Project Structure
 
@@ -92,7 +102,7 @@ For each controller, a dedicated folder will be generated, which will include th
 - \<controller-name\>.interface.ts: Contains controller interfaces.
 - \<controller-name\>.queries.ts: This optional file includes queries implemented using [@tanstack/react-query](https://tanstack.com/query/latest).
 
-Furthermore, a common-interfaces.interface.ts file will be provided to prevent import cycles.
+Furthermore, a common.interface.ts file will be provided to prevent import cycles.
 
 ## Advanced
 
@@ -100,7 +110,7 @@ Furthermore, a common-interfaces.interface.ts file will be provided to prevent i
 
 To override parameters utilize the `axiosConfig` parameter in the following manner:
 
-<pre>
+```ts
 // user.api.ts
 const signIn = async (
   payload: IUserSignInRequest,
@@ -117,11 +127,11 @@ const userApi = {
   signIn,
 };
 export default userApi;
-</pre>
+```
 
 #### Example Usage:
 
-<pre>
+```diff
 userApi.signIn(
   {
     bodyPayload: {
@@ -129,73 +139,74 @@ userApi.signIn(
       password: "******",
     },
   },
-  + {
-    + params: {
-      + someParameter: "some value",
-    + },
-    + headers: {
-      + "header-parameter": "header parameter value",
-    + },
-  + }
-  
++ {
++   params: {
++     someParameter: "some value",
++   },
++   headers: {
++     "header-parameter": "header parameter value",
++   },
++ }
+
 );
-</pre>
+```
 
 - ### Override Query parameters:
 
 Override Query Options:
 
-<pre>
+```ts
 // user.queries.ts
-const useGetAllUserQuery = (
-    options?: UseQueryOptions,
-) => 
+const useGetAllUserQuery = (options?: UseQueryOptions) =>
   useQuery({
     queryKey: userQueryKeys.useGetAllUserQuery(),
     queryFn: () => userApi.getAllUser(),
     ...options,
   });
-</pre>
+```
 
 #### Example Usage:
 
-<pre>
-const {data, isLoading} = useGetAllUserQuery(+ {
-  + refetchOnMount: true,
+```diff
++ const {data, isLoading} = useGetAllUserQuery({
++   refetchOnMount: true,
 + })
-</pre>
+```
 
 - ### Query Keys
   Each query comes with exported queryKeys for convenient use when invalidating queries, helping to prevent human errors in writing query keys and ensuring successful refetching of the query.
 
-<pre>
+```ts
 // country.queries.ts
 export const countryQueryKeys = {
-  useGetAllCityQuery: (payload: ICountryGetAllCityRequest) => ["useGetAllCityQuery", payload],
-}
-</pre>
+  useGetAllCityQuery: (payload: ICountryGetAllCityRequest) => [
+    "useGetAllCityQuery",
+    payload,
+  ],
+};
+```
 
 #### Example Usage:
 
-<pre>
-+ import { countryQueryKeys } from '/.../country/country.queries.ts'; 
+```diff
++ import { countryQueryKeys } from '/.../country/country.queries.ts';
 ...
 const queryClient = useQueryClient();
 ...
 queryClient.invalidateQueries(
-  + countryQueryKeys.useGetAllCityQuery({
-    + countryId: 3,
-  + })
++   countryQueryKeys.useGetAllCityQuery({
++     countryId: 3,
++   })
 );
-</pre>
+```
 
 - ### Omit Generation of Specific Controllers
 
-To exclude the generation of specific controllers, such as those related to the dashboard, you can utilize the `getControllerNameFromRoute` function within the `openapi3-typescript-config.json` file. When `getControllerNameFromRoute` returns `null`, the controller will not be generated.
+To exclude the generation of specific controllers, such as those related to the dashboard, you can utilize the `getControllerNameFromRoute` function within the `openapi-v3-typescript-config.json` file. When `getControllerNameFromRoute` returns `null`, the controller will not be generated.
 
-<pre>
-// openapi3-typescript-config.json
+```diff
+// openapi-v3-typescript-config.json
 {
-  + "getControllerNameFromRoute": "(route) => route.split('/')[2].startsWith('Dashboard') ? null : route.split('/')[2]" 
++  "getControllerNameFromRoute": "(route) => route.split('/')[2].startsWith('Dashboard') ? null : route.split('/')[2]"
 }
-</pre>
+```

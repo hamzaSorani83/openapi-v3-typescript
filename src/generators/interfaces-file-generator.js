@@ -3,7 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fetch_swagger_data_helpers_1 = require("../helpers/fetch-swagger-data.helpers");
 const fs = require("fs");
 const path = require("path");
-const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFromSettings) => {
+const [controllerNameToGenerate] = process.argv.slice(2);
+const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFromSettings, includedControllers, excludedControllers) => {
     const { paths, components } = openApiJson;
     const dtosInCommon = {}; // dtoName: interfaces
     const interfaces = {}; // {controllerName: controllerInterfaces[]}
@@ -39,28 +40,35 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
                 recGetRef(property.items);
             }
         };
-        Object.values(paths).forEach((obj) => {
+        Object.entries(paths).forEach(([route, obj]) => {
             const [, data] = Object.entries(obj)[0];
-            // query params properties
-            data.parameters
-                ?.filter((p) => p.in === "query")
-                .forEach((parameter) => {
-                if (parameter.schema) {
-                    recGetRef(parameter.schema);
+            if ((0, fetch_swagger_data_helpers_1.allowGenerateController)({
+                controllerName: (0, fetch_swagger_data_helpers_1.getControllerNameFromRoute)(route, getControllerFuncFromSettings),
+                controllerNameToGenerate,
+                excludedControllers,
+                includedControllers,
+            })) {
+                // query params properties
+                data.parameters
+                    ?.filter((p) => p.in === "query")
+                    .forEach((parameter) => {
+                    if (parameter.schema) {
+                        recGetRef(parameter.schema);
+                    }
+                });
+                // request properties
+                if (data.requestBody?.content) {
+                    const { schema } = Object.values(data.requestBody.content)[0];
+                    if (schema) {
+                        recGetRef(schema);
+                    }
                 }
-            });
-            // request properties
-            if (data.requestBody?.content) {
-                const { schema } = Object.values(data.requestBody.content)[0];
-                if (schema) {
-                    recGetRef(schema);
-                }
-            }
-            // response properties
-            if (data.responses["200"].content) {
-                const { schema } = Object.values(data.responses["200"].content)[0];
-                if (schema) {
-                    recGetRef(schema);
+                // response properties
+                if (data.responses["200"].content) {
+                    const { schema } = Object.values(data.responses["200"].content)[0];
+                    if (schema) {
+                        recGetRef(schema);
+                    }
                 }
             }
         });
@@ -213,7 +221,12 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
     Object.entries(paths).forEach(([route, obj]) => {
         const apiName = (0, fetch_swagger_data_helpers_1.getApiNameFromRoute)(route, true, getControllerFuncFromSettings);
         controllerName = (0, fetch_swagger_data_helpers_1.getControllerNameFromRoute)(route, getControllerFuncFromSettings);
-        if (controllerName !== null) {
+        if ((0, fetch_swagger_data_helpers_1.allowGenerateController)({
+            controllerName,
+            controllerNameToGenerate,
+            excludedControllers,
+            includedControllers,
+        })) {
             if (!interfaces[controllerName]) {
                 interfaces[controllerName] = [];
             }
@@ -253,7 +266,7 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
     const printCommonInterfacesFile = () => {
         if (!Object.entries(dtosInCommon).length)
             return;
-        const fPath = path.join(outputLocation, "common-interfaces.interface.ts");
+        const fPath = path.join(outputLocation, "common.interface.ts");
         let result = "";
         Object.entries(dtosInCommon).forEach(([dto, prop]) => {
             result += `export type ${dto} = ${typeof prop === "string" ? prop : getProperty(prop, false, true)}\n`;
@@ -261,21 +274,37 @@ const openApiJsonToInterface = (openApiJson, outputLocation, getControllerFuncFr
         fs.writeFileSync(fPath, result.replaceAll(`;\n;`, ";\n"));
     };
     const importDtosInCommonAndPrint = () => {
-        printCommonInterfacesFile();
+        if (!controllerNameToGenerate) {
+            printCommonInterfacesFile();
+        }
         Object.entries(interfaces).forEach(([cName, controllerInterfaces]) => {
-            const filePath = path.join(outputLocation, (0, fetch_swagger_data_helpers_1.convertToKebabCase)(cName), `${(0, fetch_swagger_data_helpers_1.convertToKebabCase)(cName)}.interface.ts`);
-            let result = controllerInterfaces.join("\n\n");
-            const dtosToImports = [];
-            Object.keys(dtosInCommon).forEach((dto) => {
-                if ((0, fetch_swagger_data_helpers_1.getFileDtos)(result).some((fileDto) => fileDto === dto)) {
-                    dtosToImports.push(dto);
+            if ((0, fetch_swagger_data_helpers_1.allowGenerateController)({
+                controllerName: cName,
+                controllerNameToGenerate,
+                excludedControllers,
+                includedControllers,
+            })) {
+                const filePath = path.join(outputLocation, (0, fetch_swagger_data_helpers_1.convertToKebabCase)(cName), `${(0, fetch_swagger_data_helpers_1.convertToKebabCase)(cName)}.interface.ts`);
+                let result = controllerInterfaces.join("\n\n");
+                const dtosToImports = [];
+                Object.keys(dtosInCommon).forEach((dto) => {
+                    if ((0, fetch_swagger_data_helpers_1.getFileDtos)(result).some((fileDto) => fileDto === dto)) {
+                        dtosToImports.push(dto);
+                    }
+                });
+                dtosToImports.sort((a, b) => a.length - b.length);
+                if (!controllerNameToGenerate) {
+                    if (dtosToImports.length) {
+                        result = `import {\n\t${dtosToImports.join(",\n\t")}\n} from "../common.interface";\n\n// ----------------------------------------------------------------------\n\n${result}`;
+                    }
                 }
-            });
-            dtosToImports.sort((a, b) => a.length - b.length);
-            if (dtosToImports.length) {
-                result = `import {\n\t${dtosToImports.join(",\n\t")}\n} from "../common-interfaces.interface";\n\n// ----------------------------------------------------------------------\n\n${result}`;
+                else {
+                    Object.entries(dtosInCommon).forEach(([dto, prop]) => {
+                        result += `export type ${dto} = ${typeof prop === "string" ? prop : getProperty(prop, false, true)}\n`;
+                    });
+                }
+                fs.writeFileSync(filePath, result.replaceAll(`;\n;`, ";\n"));
             }
-            fs.writeFileSync(filePath, result.replaceAll(`;\n;`, ";\n"));
         });
     };
     // REPLACING
